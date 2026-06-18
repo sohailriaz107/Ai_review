@@ -153,7 +153,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <li><a href="smart-reply.php" class="<?= $current_page == 'smart-reply.php' ? 'active' : '' ?>"><i class="fas fa-message"></i> smart reply</a></li>
         <li><a href="business.php" class="<?= $current_page == 'business.php' ? 'active' : '' ?>"><i class="fas fa-business-time"></i>Business</a></li>
            <li><a href="setting.php" class="<?= $current_page == 'setting.php' ? 'active' : '' ?>"><i class="fas fa-gear"></i>Setting</a></li>
-        <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        <li><a href="logout.php" ><i style="color:red" class="fas fa-sign-out-alt"></i> Logout</a></li>
         
     </ul>
 </nav>

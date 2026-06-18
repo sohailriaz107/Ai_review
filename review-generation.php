@@ -1,18 +1,22 @@
 
 
 <?php
+session_start();
 require_once __DIR__.'/include/connect.php';
 
 $token = isset($_GET['token']) ? $_GET['token'] : '';
 $user_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
+$business_id = 0;
+
 if ($token !== '') {
-    $token_stmt = $mysqli->prepare("SELECT user_id FROM review_tokens WHERE token=?");
+    $token_stmt = $mysqli->prepare("SELECT user_id, business_id FROM review_tokens WHERE token=?");
     $token_stmt->bind_param('s', $token);
     $token_stmt->execute();
     $token_res = $token_stmt->get_result();
     if ($token_row = $token_res->fetch_assoc()) {
         $user_id = $token_row['user_id'];
+        $business_id = $token_row['business_id'];
     }
     $token_stmt->close();
 }
@@ -24,11 +28,17 @@ $google_link = '';
 $category = '';
 $tone = 'Friendly';
 
-if ($user_id > 0) {
-    $stmt = $mysqli->prepare("SELECT name, google_review_link, category, default_tone, keywords, languages FROM businesses WHERE user_id=?");
+if ($business_id > 0) {
+    $stmt = $mysqli->prepare("SELECT name, google_review_link, category, default_tone, keywords, languages, location, no_review FROM businesses WHERE id=?");
+    $stmt->bind_param('i', $business_id);
+} elseif ($user_id > 0) {
+    $stmt = $mysqli->prepare("SELECT name, google_review_link, category, default_tone, keywords, languages, location, no_review FROM businesses WHERE user_id=? ORDER BY id DESC LIMIT 1");
     $stmt->bind_param('i', $user_id);
+}
+
+if (isset($stmt)) {
     $stmt->execute();
-    $stmt->bind_result($bname_db, $google_link_db, $category_db, $tone_db, $keywords_db, $languages_db);
+    $stmt->bind_result($bname_db, $google_link_db, $category_db, $tone_db, $keywords_db, $languages_db, $location_db, $no_review_db);
     if ($stmt->fetch()) {
         $bname = $bname_db;
         $google_link = $google_link_db;
@@ -36,8 +46,23 @@ if ($user_id > 0) {
         $tone = $tone_db ?: 'Friendly';
         $keywords = $keywords_db ?? '';
         $languages = $languages_db ?? '';
+        $location = $location_db ?? '';
+        $review_count = $no_review_db ?: 3;
     }
     $stmt->close();
+}
+
+// Fetch allow_duplicate setting for this business
+$allow_duplicate = 0;
+if ($business_id > 0) {
+    $bs_stmt = $mysqli->prepare("SELECT allow_duplicate FROM business_settings WHERE business_id = ?");
+    $bs_stmt->bind_param('i', $business_id);
+    $bs_stmt->execute();
+    $bs_result = $bs_stmt->get_result();
+    if ($bs_row = $bs_result->fetch_assoc()) {
+        $allow_duplicate = intval($bs_row['allow_duplicate']);
+    }
+    $bs_stmt->close();
 }
 
 // API Key for Gemini (Now from .env)
@@ -49,20 +74,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
     $data = json_decode(file_get_contents('php://input'), true);
     $rating = intval($data['rating'] ?? 5);
 
-    // Use stored business data: keywords, languages, tone (already fetched earlier)
+    // Use stored business data
     $keywords = $keywords ?? '';
     $languages = $languages ?? '';
     $tone_used = $tone ?: 'Friendly';
 
+    // --- Rate Limiting: Max 5 requests per minute ---
+    if (!isset($_SESSION['rate_limit'])) {
+        $_SESSION['rate_limit'] = [];
+    }
+    $now = time();
+    // Remove timestamps older than 60 seconds
+    $_SESSION['rate_limit'] = array_filter($_SESSION['rate_limit'], function($ts) use ($now) {
+        return ($now - $ts) < 60;
+    });
+    if (count($_SESSION['rate_limit']) >= 5) {
+        echo json_encode(['success' => false, 'message' => 'Rate limit exceeded. Please wait a minute before generating more reviews.']);
+        exit;
+    }
+    $_SESSION['rate_limit'][] = $now;
+
+    // --- Duplicate Prevention ---
+    if ($allow_duplicate === 0 && $business_id > 0) {
+        $session_key = "generated_{$business_id}";
+        if (isset($_SESSION[$session_key])) {
+            echo json_encode(['success' => false, 'message' => 'You have already generated reviews for this business in this session. Duplicate generation is disabled for this business.']);
+            exit;
+        }
+    }
+
     if ($gemini_api_key === 'ENTER_YOUR_API_KEY_HERE') {
-        echo json_encode(['success' => false, 'message' => 'API Key is missing. Please configure $gemini_api_key in review-generation.php']);
+        echo json_encode(['success' => false, 'message' => 'API Key is missing. Please configure your API key in .env file.']);
         exit;
     }
 
-    $prompt = "Write 3 distinct, detailed customer review options (at least 3-4 sentences each) for a business named '$bname' in the '$category' industry. The rating is $rating out of 5 stars. Use a $tone_used tone. Include the following keywords: $keywords. Use the selected language(s): $languages. The reviews should read naturally from a customer's perspective without quotation marks.\n\nIMPORTANT: Return ONLY a valid JSON array of strings containing the 3 review options. Do not include markdown formatting or any other text.";
+    $styles = [
+        'casual customer', 'friendly customer', 'first-time visitor', 'regular customer',
+        'family visitor', 'local resident', 'satisfied customer', 'professional customer'
+    ];
+    $random_style = $styles[array_rand($styles)];
 
-    // Call Gemini API (gemini-2.5-flash)
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . $gemini_api_key;
+    $focuses = [
+        'service quality', 'staff behaviour', 'overall experience', 'value for money',
+        'cleanliness', 'atmosphere', 'product quality', 'customer support'
+    ];
+    $random_focus = $focuses[array_rand($focuses)];
+
+    $prompt = "
+Generate exactly {$review_count} unique customer review options.
+
+Business: {$bname}
+Category: {$category}
+Location: {$location}
+Rating: {$rating}/5
+Tone: {$tone_used}
+Keywords: {$keywords}
+Language: {$languages}
+Customer Type: {$random_style}
+Review Focus: {$random_focus}
+
+Requirements:
+- Each review must sound like it was written by a different real customer.
+- VERY IMPORTANT (LANGUAGE): You MUST write the reviews in the requested language(s) '{$languages}'. 
+  * If multiple languages are listed (e.g. 'English,Hindi'), you MUST generate some reviews entirely in one language and some entirely in the other language (e.g. 1 in English, 2 in Hindi). 
+  * If 'Hindi' is requested, use proper Hindi script (देवनागरी). 
+  * If 'Hinglish' is requested, write conversational Hindi using the English alphabet.
+- Use different openings, wording and sentence structures.
+- Avoid repeating phrases between reviews.
+- Keep reviews natural, authentic and human-like.
+- Mention the business name or location naturally when relevant.
+- Include relevant keywords naturally where appropriate.
+- Length: 30-60 words per review.
+- Do not use quotation marks, emojis, or markdown.
+- Do not number the reviews.
+
+Return ONLY a valid JSON array containing exactly {$review_count} review strings.
+";
+
+    // Call Gemini API (gemini-2.5-flash-lite)
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" . $gemini_api_key;
     
     $post_data = [
         "contents" => [
@@ -109,6 +199,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
             
             // Attempt to parse JSON array of strings
             $reviews_array = json_decode($generated_text, true);
+            
+            // Mark session as generated (for duplicate prevention)
+            if ($business_id > 0) {
+                $_SESSION["generated_{$business_id}"] = true;
+            }
+            
             if (is_array($reviews_array)) {
                 echo json_encode(['success' => true, 'texts' => $reviews_array]);
             } else {
@@ -129,128 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
     <title>Leave a Review – <?= htmlspecialchars($bname) ?></title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            color: #333;
-        }
-        .review-card {
-            background: #fff;
-            width: 100%;
-            max-width: 500px;
-            padding: 40px 30px;
-            border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        .review-card .logo-icon {
-            font-size: 3.5rem;
-            color: #1890ff;
-            margin-bottom: 15px;
-        }
-        .review-card h1 {
-            font-size: 1.8rem;
-            color: #111;
-            margin-bottom: 5px;
-        }
-        .review-card p.subtitle {
-            color: #666;
-            margin-bottom: 30px;
-        }
-        .stars {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 30px;
-            direction: rtl; /* For CSS hover effect on preceding siblings */
-        }
-        .stars i {
-            font-size: 2.5rem;
-            color: #ddd;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-        .stars i:hover,
-        .stars i:hover ~ i,
-        .stars i.active,
-        .stars i.active ~ i {
-            color: #FFD700; /* Golden color */
-        }
-        .review-textarea {
-            width: 100%;
-            height: 120px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            font-family: 'Inter', sans-serif;
-            font-size: 1rem;
-            resize: none;
-            margin-bottom: 20px;
-            background: #fdfdfd;
-        }
-        .review-textarea:focus {
-            outline: none;
-            border-color: #1890ff;
-            background: #fff;
-        }
-        .btn-submit {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
-            color: #fff;
-            border: none;
-            border-radius: 12px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .btn-submit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(24, 144, 255, 0.3);
-        }
-        .options-container {
-            display: flex;
-            flex-direction: row;
-            gap: 15px;
-            margin-bottom: 20px;
-            overflow-x: auto;
-            padding-bottom: 10px;
-            scroll-snap-type: x mandatory;
-            scrollbar-width: none; /* Hide scrollbar for Firefox */
-        }
-        .options-container::-webkit-scrollbar {
-            display: none; /* Hide scrollbar for WebKit */
-        }
-        .option-card {
-            flex: 0 0 85%;
-            scroll-snap-align: center;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            background: #fdfdfd;
-            cursor: pointer;
-            text-align: left;
-            font-size: 0.95rem;
-            color: #444;
-            transition: all 0.2s;
-        }
-        .option-card.selected {
-            border-color: #1890ff;
-            background: #e6f7ff;
-            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-        }
-        .option-card:hover {
-            border-color: #1890ff;
-        }
-        
-    </style>
+    <link rel="stylesheet" href="../assets/review_generation.css">
 </head>
 <body>
 

@@ -57,7 +57,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif ($action === 'add' || $action === 'edit') {
         $bid = intval($_POST['business_id'] ?? 0);
         $name = trim($_POST['name'] ?? '');
-        $city = trim($_POST['city'] ?? '');
         $location = trim($_POST['location'] ?? '');
         $no_review = intval($_POST['no_review'] ?? 3);
         $category = trim($_POST['category'] ?? '');
@@ -72,8 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = "Name, Category, and Google Review Link are required.";
         } else {
             if ($action === 'add') {
-                $insert_stmt = $mysqli->prepare("INSERT INTO businesses (user_id, name, city, location, no_review, category, subcategory, google_review_link, keywords, languages, default_tone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $insert_stmt->bind_param('isssissssss', $user_id, $name, $city, $location, $no_review, $category, $subcategory, $google_review_link, $keywords, $languages, $default_tone);
+                $insert_stmt = $mysqli->prepare("INSERT INTO businesses (user_id, name, location, no_review, category, subcategory, google_review_link, keywords, languages, default_tone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $insert_stmt->bind_param('ississssss', $user_id, $name, $location, $no_review, $category, $subcategory, $google_review_link, $keywords, $languages, $default_tone);
                 if ($insert_stmt->execute()) {
                     $bid = $mysqli->insert_id;
                     
@@ -121,8 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = "Error adding business.";
                 }
             } elseif ($action === 'edit' && $bid > 0) {
-                $update_stmt = $mysqli->prepare("UPDATE businesses SET name=?, location=?, no_review=?, city=?, category=?, subcategory=?, google_review_link=?, keywords=?, languages=?, default_tone=? WHERE id=? AND user_id=?");
-                $update_stmt->bind_param('ssisssssssii', $name, $location, $no_review, $city, $category, $subcategory, $google_review_link, $keywords, $languages, $default_tone, $bid, $user_id);
+                $update_stmt = $mysqli->prepare("UPDATE businesses SET name=?, location=?, no_review=?, category=?, subcategory=?, google_review_link=?, keywords=?, languages=?, default_tone=? WHERE id=? AND user_id=?");
+                $update_stmt->bind_param('ssissssssii', $name, $location, $no_review, $category, $subcategory, $google_review_link, $keywords, $languages, $default_tone, $bid, $user_id);
                 if ($update_stmt->execute()) {
                     // Update or insert business_settings
                     $chk_s = $mysqli->prepare("SELECT id FROM business_settings WHERE business_id = ?");
@@ -295,9 +294,8 @@ $categories = [
                     <tr>
                         <th class="sortable" data-col="0">Name <i class="fas fa-sort"></i></th>
                         <th class="sortable" data-col="1">Category <i class="fas fa-sort"></i></th>
-                        <th class="sortable" data-col="2">City <i class="fas fa-sort"></i></th>
-                        <th class="sortable" data-col="3">No Review <i class="fas fa-sort"></i></th>
-                        <th class="sortable" data-col="4">Location <i class="fas fa-sort"></i></th>
+                        <th class="sortable" data-col="2">No Review <i class="fas fa-sort"></i></th>
+                        <th class="sortable" data-col="3">Location <i class="fas fa-sort"></i></th>
                         <th>QR Code</th>
                         <th>Actions</th>
                     </tr>
@@ -308,9 +306,8 @@ $categories = [
                         <tr>
                             <td><strong><?= htmlspecialchars($b['name']) ?></strong><br><small style="color:#888;">Token: <?= htmlspecialchars($b['token'] ?? 'N/A') ?></small></td>
                             <td><?= htmlspecialchars($b['category'] ?? '') ?></td>
-                            <td><?= htmlspecialchars($b['city'] ?? '') ?></td>
                             <td><?= htmlspecialchars($b['no_review'] ?? '') ?></td>
-                        <td><?= htmlspecialchars($b['location'] ?? '') ?></td>
+                            <td><?= htmlspecialchars($b['location'] ?? '') ?></td>
                             <td>
                                 <?php if ($b['qr_image']): ?>
                                     <a href="<?= htmlspecialchars($b['qr_image']) ?>" target="_blank" title="Click to view full size">

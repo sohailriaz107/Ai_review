@@ -153,7 +153,9 @@ Return ONLY a valid JSON array containing exactly {$review_count} review strings
 ";
 
     // Call Gemini API (gemini-2.5-flash-lite)
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" . $gemini_api_key;
+    // Support custom API Base URL or Proxy to bypass location block on live server
+    $api_base = $_ENV['GEMINI_API_BASE_URL'] ?? 'https://generativelanguage.googleapis.com';
+    $url = rtrim($api_base, '/') . "/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" . $gemini_api_key;
     
     $post_data = [
         "contents" => [
@@ -174,6 +176,11 @@ Return ONLY a valid JSON array containing exactly {$review_count} review strings
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($post_data));
+    
+    // Support proxy if defined in .env (e.g. HTTP_PROXY=http://127.0.0.1:8080)
+    if (!empty($_ENV['HTTP_PROXY'])) {
+        curl_setopt($ch, CURLOPT_PROXY, $_ENV['HTTP_PROXY']);
+    }
     
     $response = curl_exec($ch);
     $err = curl_error($ch);

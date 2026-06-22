@@ -34,7 +34,7 @@ $t_stmt->fetch();
 $t_stmt->close();
 
 // Fetch all businesses with tokens for chart
-$biz_stmt = $mysqli->prepare("SELECT b.name, b.category, b.city, b.created_at, t.token 
+$biz_stmt = $mysqli->prepare("SELECT b.name, b.category, b.created_at, t.token 
                                FROM businesses b 
                                LEFT JOIN review_tokens t ON b.id = t.business_id 
                                WHERE b.user_id = ? ORDER BY b.id DESC");
@@ -139,7 +139,6 @@ $monthly = array_reverse($monthly, true);
                     <tr>
                         <th>Business Name</th>
                         <th>Category</th>
-                        <th>City</th>
                         <th>Token</th>
                         <th>Created</th>
                     </tr>
@@ -150,7 +149,6 @@ $monthly = array_reverse($monthly, true);
                         <tr>
                             <td><strong><?= htmlspecialchars($biz['name']) ?></strong></td>
                             <td><span class="badge badge-blue"><?= htmlspecialchars($biz['category']) ?></span></td>
-                            <td><?= htmlspecialchars($biz['city'] ?: '-') ?></td>
                             <td><span class="badge badge-green"><?= htmlspecialchars($biz['token'] ?? 'N/A') ?></span></td>
                             <td><?= date('d M Y', strtotime($biz['created_at'])) ?></td>
                         </tr>

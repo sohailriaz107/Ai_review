@@ -148,12 +148,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <i class="fas fa-robot"></i> AI Review
     </div>
     <ul class="menu">
-        <li><a href="dashboard.php" class="<?= $current_page == 'dashboard.php' ? 'active' : '' ?>"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-        <li><a href="index.php" class="<?= $current_page == 'index.php' ? 'active' : '' ?>"><i class="fas fa-home"></i> Home</a></li>
-        <li><a href="smart-reply.php" class="<?= $current_page == 'smart-reply.php' ? 'active' : '' ?>"><i class="fas fa-message"></i> smart reply</a></li>
-        <li><a href="business.php" class="<?= $current_page == 'business.php' ? 'active' : '' ?>"><i class="fas fa-business-time"></i>Business</a></li>
-           <li><a href="setting.php" class="<?= $current_page == 'setting.php' ? 'active' : '' ?>"><i class="fas fa-gear"></i>Setting</a></li>
-        <li><a href="logout.php" ><i style="color:red" class="fas fa-sign-out-alt"></i> Logout</a></li>
+        <li><a href="/AI-review/back-office-login-wipro/dashboard.php" class="<?= $current_page == 'dashboard.php' ? 'active' : '' ?>"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+      
+        <!-- <li><a href="/AI-review/review/smart-reply.php" class="<?= $current_page == 'smart-reply.php' ? 'active' : '' ?>"><i class="fas fa-message"></i> smart reply</a></li> -->
+        <li><a href="../back-office-login-wipro/business.php" class="<?= $current_page == 'business.php' ? 'active' : '' ?>"><i class="fas fa-business-time"></i>Business</a></li>
+           <li><a href="../back-office-login-wipro/setting.php" class="<?= $current_page == 'setting.php' ? 'active' : '' ?>"><i class="fas fa-gear"></i>Setting</a></li>
+        <li><a href="../back-office-login-wipro/logout.php" ><i style="color:red" class="fas fa-sign-out-alt"></i> Logout</a></li>
         
     </ul>
 </nav>

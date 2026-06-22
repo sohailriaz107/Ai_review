@@ -3,7 +3,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once __DIR__.'/include/connect.php';
+require_once __DIR__.'/../include/connect.php';
 require_once __DIR__.'/vendor/autoload.php';
 
 use Endroid\QrCode\QrCode;
@@ -64,13 +64,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $subcategory = trim($_POST['subcategory'] ?? '');
         $google_review_link = trim($_POST['google_review_link'] ?? '');
         $allow_duplicate = isset($_POST['allow_duplicate']) ? 1 : 0;
+        $keywords = trim($_POST['keywords'] ?? '');
+        $languages = trim($_POST['languages'] ?? 'English');
+        $default_tone = trim($_POST['default_tone'] ?? 'Friendly');
         
         if ($name === '' || $category === '' || $google_review_link === '') {
             $error = "Name, Category, and Google Review Link are required.";
         } else {
             if ($action === 'add') {
-                $insert_stmt = $mysqli->prepare("INSERT INTO businesses (user_id, name, city, location, no_review, category, subcategory, google_review_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                $insert_stmt->bind_param('isssisss', $user_id, $name, $city, $location, $no_review, $category, $subcategory, $google_review_link);
+                $insert_stmt = $mysqli->prepare("INSERT INTO businesses (user_id, name, city, location, no_review, category, subcategory, google_review_link, keywords, languages, default_tone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $insert_stmt->bind_param('isssissssss', $user_id, $name, $city, $location, $no_review, $category, $subcategory, $google_review_link, $keywords, $languages, $default_tone);
                 if ($insert_stmt->execute()) {
                     $bid = $mysqli->insert_id;
                     
@@ -91,12 +94,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $qrResult = $writer->write($qrCode);
                         
                         $filename = 'qr_' . $user_id . '_' . $bid . '_' . time() . '.png';
-                        $filepath = __DIR__ . '/uploads/qrcodes/' . $filename;
-                        if (!is_dir(__DIR__ . '/uploads/qrcodes/')) {
-                            mkdir(__DIR__ . '/uploads/qrcodes/', 0777, true);
+                        $filepath = __DIR__ . '/../review/uploads/qrcodes/' . $filename;
+                        if (!is_dir(__DIR__ . '/../review/uploads/qrcodes/')) {
+                            mkdir(__DIR__ . '/../review/uploads/qrcodes/', 0777, true);
                         }
                         $qrResult->saveToFile($filepath);
-                        $qr_image_path = 'uploads/qrcodes/' . $filename;
+                        // Store absolute path from web root for correct download link
+                        $qr_image_path = '/AI-review/review/uploads/qrcodes/' . $filename;
                         
                         $upd_qr = $mysqli->prepare("UPDATE businesses SET qr_image = ? WHERE id = ?");
                         $upd_qr->bind_param('si', $qr_image_path, $bid);
@@ -114,8 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = "Error adding business.";
                 }
             } elseif ($action === 'edit' && $bid > 0) {
-                $update_stmt = $mysqli->prepare("UPDATE businesses SET name=?, location=?, no_review=?, city=?, category=?, subcategory=?, google_review_link=? WHERE id=? AND user_id=?");
-                $update_stmt->bind_param('ssissssii', $name, $location, $no_review, $city, $category, $subcategory, $google_review_link, $bid, $user_id);
+                $update_stmt = $mysqli->prepare("UPDATE businesses SET name=?, location=?, no_review=?, city=?, category=?, subcategory=?, google_review_link=?, keywords=?, languages=?, default_tone=? WHERE id=? AND user_id=?");
+                $update_stmt->bind_param('ssisssssssii', $name, $location, $no_review, $city, $category, $subcategory, $google_review_link, $keywords, $languages, $default_tone, $bid, $user_id);
                 if ($update_stmt->execute()) {
                     // Update or insert business_settings
                     $chk_s = $mysqli->prepare("SELECT id FROM business_settings WHERE business_id = ?");
@@ -162,40 +166,69 @@ $categories = [
     <title>Manage Businesses – AI Review</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="assets/css/style.css">
     <style>
         .table-responsive { overflow-x: auto; margin-top: 20px; }
-        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid #f0f0f0; }
         th { background: #f8f9fa; color: #333; font-weight: 600; }
         td { color: #555; }
         
         /* Modal Styles */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center; }
-        .modal-content { background: #fff; width: 100%; max-width: 500px; padding: 25px; border-radius: 16px; position: relative; margin:10px; max-height: 90vh; overflow-y: auto; }
+        .modal-content { background: #fff; width: 100%; max-width: 750px; padding: 30px; border-radius: 16px; position: relative; margin:10px; max-height: 90vh; overflow-y: auto; scrollbar-width: none; }
+        .modal-content::-webkit-scrollbar { display: none; }
         .close-modal { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; color: #888; }
         .add-btn { background: #1890ff; color: white; padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; font-size: 1rem; font-weight: 600; margin-bottom: 20px; display: inline-flex; align-items: center; gap: 8px; }
 
-        /* 3-dot Action Dropdown */
         .action-wrapper { position: relative; display: inline-block; }
         .dots-btn { background: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 1.1rem; color: #555; transition: all 0.2s; }
         .dots-btn:hover { background: #f5f5f5; color: #333; }
-        .action-dropdown { display: none; position: absolute; right: 0; top: 100%; margin-top: 5px; background: #fff; border-radius: 10px; box-shadow: 0 8px 25px rgba(0,0,0,0.12); z-index: 100; min-width: 150px; overflow: hidden; }
+        .action-dropdown { display: none; position: fixed; background: #fff; border-radius: 10px; box-shadow: 0 8px 25px rgba(0,0,0,0.12); z-index: 9999; min-width: 150px; overflow: hidden; }
         .action-dropdown.show { display: block; }
         .action-dropdown a, .action-dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; border: none; background: none; text-align: left; font-size: 0.9rem; cursor: pointer; color: #333; text-decoration: none; transition: background 0.15s; font-family: 'Inter', sans-serif; }
         .action-dropdown a:hover, .action-dropdown button:hover { background: #f5f7fa; }
         .action-dropdown .delete-action { color: #dc3545; }
         .action-dropdown .delete-action:hover { background: #fff5f5; }
 
+        /* Custom Table Controls */
+        .table-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px; }
+        .table-controls .length-menu { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #555; border: 1px solid #ddd; padding: 6px 12px; border-radius: 8px; }
+        .table-controls select, .table-controls input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; outline: none; transition: 0.2s; }
+        .table-controls select:focus, .table-controls input:focus { border-color: #1890ff; box-shadow: 0 0 0 3px rgba(24,144,255,0.1); }
+        .table-controls .search-box { display: flex; align-items: center; gap: 8px; }
+        
+        .pagination-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; font-size: 0.9rem; color: #555; flex-wrap: wrap; gap: 15px; }
+        .pagination-btns { display: flex; gap: 5px; }
+        .pagination-btns button { padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        .pagination-btns button:hover:not(:disabled) { background: #f0f0f0; }
+        .pagination-btns button.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+        .pagination-btns button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { background: #eee; }
+        th.sortable i { margin-left: 5px; color: #aaa; font-size: 0.8rem; }
+
         /* Mobile Responsive */
         @media (max-width: 768px) {
             .page-header { flex-direction: column; align-items: center !important; text-align: center; gap: 15px; }
-            .page-header .add-btn {  justify-content: center; }
+            .page-header .add-btn { justify-content: center; }
+            
+            .table-controls { flex-direction: column; align-items: stretch; }
+            .table-controls .length-menu { justify-content: center; }
+            .table-controls .search-box input { width: 100%; }
+            .pagination-controls { flex-direction: column; align-items: center; }
         }
+
+        /* Pills Styling */
+        .pills-group { display: flex; flex-wrap: wrap; gap: 10px;justify-content: center;
+  margin: 15px; }
+        .pill { padding: 8px 16px; border: 1px solid #ddd; border-radius: 20px; background: #fff; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; color: #555; }
+        .pill.active { background: #1890ff; color: #fff; border-color: #1890ff; }
     </style>
 </head>
 <body class="admin">
-    <?php include 'include/sidebar.php'; ?>
+    <?php include '../include/sidebar.php'; ?>
     <main class="content">
         <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
             <div>
@@ -211,21 +244,39 @@ $categories = [
         <?php if (!empty($error)): ?>
             <div class="alert error"><i class="fas fa-exclamation-triangle"></i> <?= $error ?></div>
         <?php endif; ?>
-
-        <div class="table-responsive">
-            <table>
+        
+        <div class="table-responsive" style="padding: 20px; background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-top: 20px;">
+            <div class="table-controls">
+                <div class="length-menu">
+                    Show 
+                    <select id="pageSize">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="-1">All</option>
+                    </select>
+                    entries
+                </div>
+                <div class="search-box">
+                    <label>Search:</label>
+                    <input type="text" id="searchInput" placeholder="Search businesses...">
+                </div>
+            </div>
+            
+            <table id="businessTable" style="width:100%; border-collapse: collapse;">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Category</th>
-                        <th>City</th>
-                        <th>No Review</th>
-                        <th>Location</th>
+                        <th class="sortable" data-col="0">Name <i class="fas fa-sort"></i></th>
+                        <th class="sortable" data-col="1">Category <i class="fas fa-sort"></i></th>
+                        <th class="sortable" data-col="2">City <i class="fas fa-sort"></i></th>
+                        <th class="sortable" data-col="3">No Review <i class="fas fa-sort"></i></th>
+                        <th class="sortable" data-col="4">Location <i class="fas fa-sort"></i></th>
                         <th>QR Code</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="tableBody">
                     <?php if (count($businesses) > 0): ?>
                         <?php foreach($businesses as $b): ?>
                         <tr>
@@ -237,10 +288,17 @@ $categories = [
                             <td>
                                 <?php if ($b['qr_image']): ?>
                                     <a href="<?= htmlspecialchars($b['qr_image']) ?>" target="_blank" title="Click to view full size">
-                                        <img src="<?= htmlspecialchars($b['qr_image']) ?>" width="80" style="border-radius:4px;border:1px solid #ddd; margin-bottom: 5px;">
+                                     
                                     </a>
                                     <br>
-                                    <a href="<?= htmlspecialchars($b['qr_image']) ?>" download="QRCode_<?= htmlspecialchars($b['name']) ?>.png" style="font-size: 0.85rem; color: #1890ff; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-download"></i> Download</a>
+                                    <a href="<?= htmlspecialchars($b['qr_image']) ?>" download="QRCode_<?= htmlspecialchars($b['name']) ?>.png" style="font-size: 0.85rem; color:red; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-download"></i> Download</a>
+                                    <br>
+                                    <?php 
+                                        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+                                        $domain = $_SERVER['HTTP_HOST'];
+                                        $copy_url = $protocol . "://" . $domain . "/AI-review/review/" . urlencode($b['token'] ?? '');
+                                    ?>
+                                    <a href="javascript:void(0)" onclick="navigator.clipboard.writeText('<?= $copy_url ?>'); alert('URL Copied!');" style="font-size: 0.85rem; color: #1890ff; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; margin-top: 5px;"><i class="fas fa-copy"></i> Copy URL</a>
                                 <?php else: ?>
                                     <span style="color:#aaa;">No QR</span>
                                 <?php endif; ?>
@@ -253,7 +311,7 @@ $categories = [
                                         <form method="POST" onsubmit="return confirm('Are you sure you want to delete this business?');" style="margin:0;">
                                             <input type="hidden" name="action" value="delete">
                                             <input type="hidden" name="business_id" value="<?= $b['id'] ?>">
-                                            <button type="submit" class="delete-action"><i class="fas fa-trash"></i> Delete</button>
+                                            <button type="submit" class="delete-action"><i class="fas fa-trash"></i></button>
                                         </form>
                                     </div>
                                 </div>
@@ -267,6 +325,11 @@ $categories = [
                     <?php endif; ?>
                 </tbody>
             </table>
+
+            <div class="pagination-controls">
+                <div class="page-info" id="pageInfo">Showing 0 to 0 of 0 entries</div>
+                <div class="pagination-btns" id="paginationBtns"></div>
+            </div>
         </div>
     </main>
 
@@ -274,27 +337,31 @@ $categories = [
     <div class="modal" id="businessModal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeModal()">&times;</span>
-            <h2 id="modalTitle" style="margin-bottom: 20px; color: #111;">Add Business</h2>
+            <h2 id="modalTitle" style="margin-bottom: 20px; color: #111;text-align:center;">Add Business</h2>
             <form method="POST" action="">
                 <input type="hidden" name="action" id="formAction" value="add">
                 <input type="hidden" name="business_id" id="businessId" value="0">
                 
-                <div style="margin-bottom: 15px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Business Name *</label>
-                    <input type="text" name="name" id="bName" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Business Name *</label>
+                        <input type="text" name="name" id="bName" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">City</label>
+                        <input type="text" name="city" id="bCity" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
                 </div>
                 
-                <div style="margin-bottom: 15px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">City</label>
-                    <input type="text" name="city" id="bCity" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                </div>
-                  <div style="margin-bottom: 15px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Business Location</label>
-                    <input type="text" name="location" id="blocation" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                </div>
-                  <div style="margin-bottom: 15px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">No of Reviews</label>
-                    <input type="number" name="no_review" id="bno_review" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Business Location</label>
+                        <input type="text" name="location" id="blocation" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">No of Reviews</label>
+                        <input type="number" name="no_review" id="bno_review" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
@@ -318,23 +385,191 @@ $categories = [
                     </div>
                 </div>
 
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Google Review Link *</label>
+                        <input type="url" name="google_review_link" id="bGoogle" required placeholder="https://..." style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Keywords</label>
+                        <input type="text" name="keywords" id="bKeywords" placeholder="e.g. cafe,food,jaipur" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                </div>
+
                 <div style="margin-bottom: 15px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Google Review Link *</label>
-                    <input type="url" name="google_review_link" id="bGoogle" required placeholder="https://..." style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                    <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Choose Language</label>
+                    <div class="pills-group" id="language-pills">
+                        <button type="button" class="pill" data-lang="English">English</button>
+                        <button type="button" class="pill" data-lang="Hindi">Hindi</button>
+                        <button type="button" class="pill" data-lang="Hinglish">Hinglish</button>
+                    </div>
+                    <input type="hidden" name="languages" id="bLanguages" value="">
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Default Tone</label>
+                    <div class="pills-group" id="tone-pills">
+                        <button type="button" class="pill" data-tone="Professional">Professional</button>
+                        <button type="button" class="pill" data-tone="Friendly">Friendly</button>
+                        <button type="button" class="pill" data-tone="Enthusiastic">Enthusiastic</button>
+                    </div>
+                    <input type="hidden" name="default_tone" id="bDefaultTone" value="Friendly">
                 </div>
 
                 <div style="margin-bottom: 25px; display: flex; align-items: center; gap: 10px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
                     <input type="checkbox" name="allow_duplicate" id="bAllowDuplicate" value="1" style="width: 18px; height: 18px; cursor: pointer;">
                     <label for="bAllowDuplicate" style="font-weight: 600; color: #333; cursor: pointer; margin: 0;">Allow Duplicate Reviews</label>
-                    <small style="color: #888; margin-left: auto;">If unchecked, users can only generate once per session</small>
+                    <small style="color: #888;">If unchecked, users can only generate once per session</small>
                 </div>
 
-                <button type="submit" class="btn-save" style="border-radius: 8px;">Save Business</button>
+                <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                    <button type="button" onclick="closeModal()" style="padding: 10px 24px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-weight: 600; color: #555; transition: 0.2s;">Cancel</button>
+                    <button type="submit" class="btn-save" style="border-radius: 8px; width: auto; padding: 10px 24px;">Save Business</button>
+                </div>
             </form>
         </div>
     </div>
 
     <script>
+        // Custom Table Logic (Search, Sort, Pagination)
+        document.addEventListener('DOMContentLoaded', function() {
+            const tbody = document.getElementById('tableBody');
+            const originalRows = Array.from(tbody.querySelectorAll('tr'));
+            const searchInput = document.getElementById('searchInput');
+            const pageSizeSelect = document.getElementById('pageSize');
+            const pageInfo = document.getElementById('pageInfo');
+            const paginationBtns = document.getElementById('paginationBtns');
+            const headers = document.querySelectorAll('th.sortable');
+            
+            let filteredRows = [...originalRows];
+            let currentPage = 1;
+            let currentSortCol = -1;
+            let currentSortAsc = true;
+
+            function renderTable() {
+                // If "No businesses added yet" is the only row, skip logic
+                if (originalRows.length === 1 && originalRows[0].cells[0].colSpan > 1) {
+                    return;
+                }
+
+                const pageSize = parseInt(pageSizeSelect.value);
+                const totalEntries = filteredRows.length;
+                const totalPages = pageSize === -1 ? 1 : Math.ceil(totalEntries / pageSize);
+                
+                if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
+                if (currentPage < 1) currentPage = 1;
+
+                const startIdx = pageSize === -1 ? 0 : (currentPage - 1) * pageSize;
+                const endIdx = pageSize === -1 ? totalEntries : Math.min(startIdx + pageSize, totalEntries);
+
+                // Hide all original rows
+                originalRows.forEach(row => row.style.display = 'none');
+
+                // Show only paginated rows
+                for (let i = startIdx; i < endIdx; i++) {
+                    filteredRows[i].style.display = '';
+                    tbody.appendChild(filteredRows[i]); // Append to keep order
+                }
+
+                // Update Info
+                const startDisplay = totalEntries === 0 ? 0 : startIdx + 1;
+                pageInfo.innerText = `Showing ${startDisplay} to ${endIdx} of ${totalEntries} entries`;
+
+                
+                // Render Pagination Buttons
+                paginationBtns.innerHTML = '';
+                if (totalPages > 1) {
+                    const prevBtn = document.createElement('button');
+                    prevBtn.innerText = 'Previous';
+                    prevBtn.disabled = currentPage === 1;
+                    prevBtn.onclick = () => { currentPage--; renderTable(); };
+                    paginationBtns.appendChild(prevBtn);
+
+                    for (let i = 1; i <= totalPages; i++) {
+                        // Simple sliding window for pages can be added, but keeping it simple for now
+                        const btn = document.createElement('button');
+                        btn.innerText = i;
+                        if (i === currentPage) btn.classList.add('active');
+                        btn.onclick = () => { currentPage = i; renderTable(); };
+                        paginationBtns.appendChild(btn);
+                    }
+
+                    const nextBtn = document.createElement('button');
+                    nextBtn.innerText = 'Next';
+                    nextBtn.disabled = currentPage === totalPages;
+                    nextBtn.onclick = () => { currentPage++; renderTable(); };
+                    paginationBtns.appendChild(nextBtn);
+                }
+            }
+
+            // Search Filter
+            searchInput.addEventListener('input', function() {
+                const term = this.value.toLowerCase();
+                filteredRows = originalRows.filter(row => {
+                    return row.innerText.toLowerCase().includes(term);
+                });
+                currentPage = 1; // Reset to page 1 on search
+                
+                // Re-apply sorting if active
+                if (currentSortCol !== -1) {
+                    sortArray(filteredRows, currentSortCol, currentSortAsc);
+                }
+                
+                renderTable();
+            });
+
+            // Length Menu Change
+            pageSizeSelect.addEventListener('change', function() {
+                currentPage = 1;
+                renderTable();
+            });
+
+            // Sorting helper
+            function sortArray(arr, colIdx, isAsc) {
+                arr.sort((a, b) => {
+                    let valA = a.cells[colIdx].innerText.trim();
+                    let valB = b.cells[colIdx].innerText.trim();
+                    
+                    // Basic numeric check
+                    let numA = parseFloat(valA.replace(/[^0-9.-]+/g,""));
+                    let numB = parseFloat(valB.replace(/[^0-9.-]+/g,""));
+                    
+                    if (!isNaN(numA) && !isNaN(numB) && valA.match(/^[0-9.,]+$/)) {
+                        return isAsc ? numA - numB : numB - numA;
+                    }
+                    
+                    return isAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                });
+            }
+
+            // Sorting Clicks
+            headers.forEach(header => {
+                header.addEventListener('click', function() {
+                    const colIdx = parseInt(this.getAttribute('data-col'));
+                    
+                    if (currentSortCol === colIdx) {
+                        currentSortAsc = !currentSortAsc;
+                    } else {
+                        currentSortCol = colIdx;
+                        currentSortAsc = true;
+                    }
+
+                    // Reset icons
+                    headers.forEach(th => th.querySelector('i').className = 'fas fa-sort');
+                    
+                    // Set current icon
+                    const icon = this.querySelector('i');
+                    icon.className = currentSortAsc ? 'fas fa-sort-up' : 'fas fa-sort-down';
+
+                    sortArray(filteredRows, colIdx, currentSortAsc);
+                    renderTable();
+                });
+            });
+
+            // Initial render
+            renderTable();
+        });
+
         function openModal(action, data = null) {
             document.getElementById('businessModal').style.display = 'flex';
             document.getElementById('formAction').value = action;
@@ -349,22 +584,91 @@ $categories = [
                 document.getElementById('bSubcategory').value = data.subcategory;
                 document.getElementById('bGoogle').value = data.google_review_link;
                 document.getElementById('bAllowDuplicate').checked = (data.allow_duplicate == 1);
+                document.getElementById('bKeywords').value = data.keywords || '';
+                
+                // Set language pills
+                let langs = data.languages ? data.languages.split(',') : [];
+                document.getElementById('bLanguages').value = data.languages || '';
+                document.querySelectorAll('#language-pills .pill').forEach(p => {
+                    if (langs.includes(p.getAttribute('data-lang'))) {
+                        p.classList.add('active');
+                    } else {
+                        p.classList.remove('active');
+                    }
+                });
+
+                // Set tone pills
+                let tone = data.default_tone || 'Friendly';
+                document.getElementById('bDefaultTone').value = tone;
+                document.querySelectorAll('#tone-pills .pill').forEach(p => {
+                    p.innerHTML = p.getAttribute('data-tone'); // reset HTML
+                    if (p.getAttribute('data-tone') === tone) {
+                        p.classList.add('active');
+                        p.innerHTML += ' <i class="fas fa-check"></i>';
+                    } else {
+                        p.classList.remove('active');
+                    }
+                });
             } else {
                 document.getElementById('modalTitle').innerText = 'Add Business';
                 document.getElementById('businessId').value = '0';
                 document.getElementById('bName').value = '';
                 document.getElementById('bCity').value = '';
                 document.getElementById('blocation').value = '';
-                document.getElementById('bno_review').value = '';
+                document.getElementById('bno_review').value = 3;
                 document.getElementById('bCategory').value = '';
                 document.getElementById('bSubcategory').value = '';
                 document.getElementById('bGoogle').value = '';
                 document.getElementById('bAllowDuplicate').checked = false;
+                document.getElementById('bKeywords').value = '';
+                
+                // Reset language pills
+                document.getElementById('bLanguages').value = '';
+                document.querySelectorAll('#language-pills .pill').forEach(p => p.classList.remove('active'));
+
+                // Reset tone pills (Default Friendly)
+                document.getElementById('bDefaultTone').value = 'Friendly';
+                document.querySelectorAll('#tone-pills .pill').forEach(p => {
+                    p.innerHTML = p.getAttribute('data-tone');
+                    p.classList.remove('active');
+                    if (p.getAttribute('data-tone') === 'Friendly') {
+                        p.classList.add('active');
+                        p.innerHTML += ' <i class="fas fa-check"></i>';
+                    }
+                });
             }
         }
         function closeModal() {
             document.getElementById('businessModal').style.display = 'none';
         }
+
+        // Pill Click Logic
+        document.addEventListener('DOMContentLoaded', function() {
+            // Languages
+            document.querySelectorAll('#language-pills .pill').forEach(pill => {
+                pill.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    let activeLangs = [];
+                    document.querySelectorAll('#language-pills .pill.active').forEach(p => {
+                        activeLangs.push(p.getAttribute('data-lang'));
+                    });
+                    document.getElementById('bLanguages').value = activeLangs.join(',');
+                });
+            });
+
+            // Tone
+            document.querySelectorAll('#tone-pills .pill').forEach(pill => {
+                pill.addEventListener('click', function() {
+                    document.querySelectorAll('#tone-pills .pill').forEach(p => {
+                        p.classList.remove('active');
+                        p.innerHTML = p.getAttribute('data-tone');
+                    });
+                    this.classList.add('active');
+                    this.innerHTML += ' <i class="fas fa-check"></i>';
+                    document.getElementById('bDefaultTone').value = this.getAttribute('data-tone');
+                });
+            });
+        });
 
         // 3-dot dropdown logic
         function closeAllDropdowns() {
@@ -374,14 +678,29 @@ $categories = [
             const dropdown = btn.nextElementSibling;
             const isOpen = dropdown.classList.contains('show');
             closeAllDropdowns();
-            if (!isOpen) dropdown.classList.add('show');
+            if (!isOpen) {
+                dropdown.classList.add('show');
+                const rect = btn.getBoundingClientRect();
+                const dropRect = dropdown.getBoundingClientRect();
+                
+                // Position fixed below the button, aligned to the right edge
+                let topPos = rect.bottom + 5;
+                if (topPos + dropRect.height > window.innerHeight) {
+                    topPos = rect.top - dropRect.height - 5; // show above if not enough space
+                }
+                
+                dropdown.style.top = topPos + 'px';
+                dropdown.style.left = (rect.right - dropRect.width) + 'px';
+            }
         }
-        // Close dropdown when clicking outside
+        
+        // Close dropdown when clicking outside or scrolling
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.action-wrapper')) {
                 closeAllDropdowns();
             }
         });
+        window.addEventListener('scroll', closeAllDropdowns, true);
     </script>
 </body>
 </html>

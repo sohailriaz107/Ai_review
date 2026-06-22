@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once __DIR__.'/include/connect.php';
+require_once __DIR__.'/../include/connect.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
     <title>Settings – AI Review</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="assets/css/style.css">
     <style>
         .settings-container {
             display: grid;
@@ -333,7 +333,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
     </style>
 </head>
 <body class="admin">
-    <?php include 'include/sidebar.php'; ?>
+    <?php include '../include/sidebar.php'; ?>
     <main class="content">
         <div class="settings-container">
             

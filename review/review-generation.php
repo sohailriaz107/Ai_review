@@ -2,7 +2,8 @@
 
 <?php
 session_start();
-require_once __DIR__.'/include/connect.php';
+
+require_once __DIR__.'/../include/connect.php';
 
 $token = isset($_GET['token']) ? $_GET['token'] : '';
 $user_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -225,7 +226,7 @@ Return ONLY a valid JSON array containing exactly {$review_count} review strings
     <title>Leave a Review – <?= htmlspecialchars($bname) ?></title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/review_generation.css">
+    <link rel="stylesheet" href="assets/css/review_generation.css">
 </head>
 <body>
 
@@ -274,7 +275,7 @@ function generateReview(rating) {
     optionsContainer.innerHTML = '';
     textarea.value = ''; // clear textarea
 
-    fetch('/AI-review/review-generation.php?<?= $fetch_query ?>&action=generate_review', {
+    fetch('review-generation.php?<?= $fetch_query ?>&action=generate_review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating: rating })

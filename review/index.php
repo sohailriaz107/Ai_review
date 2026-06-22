@@ -1,9 +1,10 @@
 <?php
-require_once __DIR__.'/include/connect.php';
+
+require_once __DIR__.'/../include/connect.php';
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
+    header('Location: ../back-office-login-wipro/login.php');
     exit;
 }
 
@@ -86,10 +87,10 @@ if (!empty($bname) && empty($user_token)) {
     <title>Dashboard – AI Review</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="../back-office-login-wipro/assets/css/style.css">
 </head>
 <body class="admin">
-    <?php include 'include/sidebar.php'; ?>
+    <?php include '../include/sidebar.php'; ?>
     <main class="content">
         <!-- Top Promo Banner could go here -->
         
@@ -109,7 +110,7 @@ if (!empty($bname) && empty($user_token)) {
                 <?php else: ?>
                     <div style="padding: 40px 20px; background: #f5f5f5; border-radius: 12px; margin-bottom: 15px;">
                         <i class="fas fa-qrcode" style="font-size: 3rem; color: #ccc; margin-bottom: 10px;"></i>
-                        <p style="color: #888; font-size: 0.9rem;">No QR Code generated yet.<br><a href="business.php">Configure Business</a></p>
+                        <p style="color: #888; font-size: 0.9rem;">No QR Code generated yet.<br><a href="../back-office-login-wipro/business.php">Configure Business</a></p>
                     </div>
                 <?php endif; ?>
                 

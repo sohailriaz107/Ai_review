@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once __DIR__.'/include/connect.php';
+require_once __DIR__.'/../include/connect.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -68,66 +68,12 @@ $monthly = array_reverse($monthly, true);
     <title>Dashboard – AI Review</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="assets/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.37.1/dist/apexcharts.min.js"></script>
-    <style>
-        /* ========== STAT CARDS (Bootstrap-style solid BG) ========== */
-        .dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
-        .stat-card { border-radius: 14px; padding: 22px 24px; color: #fff; position: relative; overflow: hidden; min-height: 120px; display: flex; flex-direction: column; justify-content: space-between; }
-        .stat-card .stat-bg-icon { position: absolute; right: 15px; bottom: 10px; font-size: 4rem; opacity: 0.15; }
-        .stat-card h3 { font-size: 2rem; font-weight: 700; margin: 0; }
-        .stat-card p { margin: 4px 0 0; font-size: 0.9rem; opacity: 0.9; font-weight: 500; }
-        .bg-primary { background: #0d6efd; }
-        .bg-success { background: #198754; }
-        .bg-warning { background: #ffc107; color: #333 !important; }
-        .bg-warning p { color: #555 !important; }
-        .bg-danger { background: #dc3545; }
-        .bg-info { 
-    background: #0dcaf0; 
-    color: #fff !important;
-}
-
-.bg-info p {
-    color: #eafcff !important;
-}
-
-        /* ========== CHARTS ========== */
-        .chart-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; margin-bottom: 30px; }
-        .chart-card { background: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-        .chart-card h3 { font-size: 1rem; color: #333; margin-bottom: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-        .chart-card h3 i { font-size: 1.1rem; }
-
-        /* ========== RECENT TABLE ========== */
-        .recent-table { background: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-        .recent-table h3 { font-size: 1rem; color: #333; margin-bottom: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-        .recent-table table { width: 100%; border-collapse: collapse; }
-        .recent-table th, .recent-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #f0f0f0; }
-        .recent-table th { color: #999; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; background: #fafafa; }
-        .recent-table td { color: #555; font-size: 0.9rem; }
-        .recent-table tr:last-child td { border-bottom: none; }
-        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
-        .badge-blue { background: #e6f7ff; color: #1890ff; }
-        .badge-green { background: #f6ffed; color: #389e0d; }
-
-        /* ========== WELCOME ========== */
-        .welcome-banner { background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 60%, #084298 100%); border-radius: 16px; padding: 28px 30px; color: #fff; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
-        .welcome-banner h2 { font-size: 1.5rem; margin: 0 0 4px; font-weight: 700; }
-        .welcome-banner p { margin: 0; opacity: 0.85; font-size: 0.95rem; }
-        .welcome-banner .date { background: rgba(255,255,255,0.18); padding: 8px 16px; border-radius: 10px; font-weight: 500; font-size: 0.9rem; }
-
-        @media (max-width: 992px) {
-            .dash-stats { grid-template-columns: repeat(2, 1fr); }
-            .chart-grid { grid-template-columns: 1fr; }
-        }
-        @media (max-width: 576px) {
-            .dash-stats { grid-template-columns: 1fr; }
-            .welcome-banner { flex-direction: column; text-align: center; }
-            .recent-table { overflow-x: auto; }
-        }
-    </style>
+    
 </head>
 <body class="admin">
-    <?php include 'include/sidebar.php'; ?>
+    <?php include '../include/sidebar.php'; ?>
     <main class="content">
         <!-- Welcome Banner -->
         <div class="welcome-banner">

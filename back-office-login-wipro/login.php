@@ -1,9 +1,9 @@
 <?php
-require_once __DIR__.'/include/connect.php';
+require_once __DIR__.'/../include/connect.php';
 session_start();
 
 if (isset($_SESSION['user_id'])) {
-    header('Location: index.php');
+    header('Location: dashboard.php');
     exit;
 }
 
@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (password_verify($pass, $hash)) {
             session_regenerate_id(true);
             $_SESSION['user_id'] = $uid;
-            header('Location: index.php');
+            header('Location: dashboard.php');
             exit;
         }
         $error = "Invalid credentials.";
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Login – AI Review</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body class="auth-page">
     <div class="login-card">

@@ -3,11 +3,11 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once __DIR__.'/include/connect.php';
+require_once __DIR__.'/../include/connect.php';
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
+    header('Location: ../back-office-login-wipro/login.php');
     exit;
 }
 
@@ -107,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
     <title>Smart Reply – AI Review</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="../back-office-login-wipro/assets/css/style.css">
     <style>
         .stars {
             display: flex;
@@ -220,7 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
     </style>
 </head>
 <body class="admin">
-    <?php include 'include/sidebar.php'; ?>
+    <?php include '../include/sidebar.php'; ?>
     <main class="content">
         <h1>Smart Reply Generation</h1>
         <p>Generate professional replies to your customer reviews instantly.</p>

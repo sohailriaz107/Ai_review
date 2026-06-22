@@ -1,4 +1,4 @@
 RewriteEngine On
-
-RewriteRule ^review-generation\.php/([0-9]+)$ review-generation.php?id=$1 [L,QSA]
-RewriteRule ^review/([0-9A-Za-z]+)$ review-generation.php?token=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^review/([a-zA-Z0-9-]+)$ review/review-generation.php?token=$1 [QSA,L]

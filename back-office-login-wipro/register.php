@@ -2,7 +2,7 @@
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-require_once __DIR__.'/include/connect.php';
+require_once __DIR__.'/../include/connect.php';
 session_start();
 $error = '';
 
@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Regenerate session ID for security
                 session_regenerate_id(true);
                 $_SESSION['user_id'] = $stmt->insert_id;
-                header('Location: index.php');
+                header('Location: dashboard.php');
                 exit;
             } else {
                 $error = $stmt->error;
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Register – AI Review</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body class="auth-page">
     <div class="login-card">

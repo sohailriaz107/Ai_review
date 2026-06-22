@@ -255,7 +255,7 @@ body{font-family:'Inter',Arial,sans-serif;background:#111;color:#eee}
     }
     #tone-pills .pill {
         padding: 8px 14px;
-        font-size: 0.85rem;
+        font-size: 10px;
     }
     .login-card {
         padding: 30px 20px;

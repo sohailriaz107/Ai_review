@@ -236,6 +236,7 @@ $categories = [
 
         /* Mobile Responsive */
         @media (max-width: 768px) {
+            .modal-content label { font-size: 11px !important; }
             .page-header { flex-direction: column; align-items: center !important; text-align: center; gap: 15px; }
             .page-header .add-btn { justify-content: center; }
             

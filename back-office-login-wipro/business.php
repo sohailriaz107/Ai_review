@@ -87,7 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     try {
                         $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
                         $domain = $_SERVER['HTTP_HOST'];
-                        $review_url = $protocol . "://" . $domain . "/AI-review/review/" . $user_token;
+                        // Calculate base directory dynamically (handles both localhost/AI-review and live root)
+                        $script_path = $_SERVER['REQUEST_URI'];
+                        $base_dir = substr($script_path, 0, strpos($script_path, '/back-office-login-wipro/'));
+                        $review_url = $protocol . "://" . $domain . $base_dir . "/review/" . $user_token;
 
                         $qrCode = new QrCode($review_url);
                         $writer = new PngWriter();
@@ -99,8 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             mkdir(__DIR__ . '/../review/uploads/qrcodes/', 0777, true);
                         }
                         $qrResult->saveToFile($filepath);
-                        // Store absolute path from web root for correct download link
-                        $qr_image_path = '/AI-review/review/uploads/qrcodes/' . $filename;
+                        // Use relative path so it works perfectly on both localhost and live server
+                        $qr_image_path = '../review/uploads/qrcodes/' . $filename;
                         
                         $upd_qr = $mysqli->prepare("UPDATE businesses SET qr_image = ? WHERE id = ?");
                         $upd_qr->bind_param('si', $qr_image_path, $bid);
@@ -178,7 +181,30 @@ $categories = [
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center; }
         .modal-content { background: #fff; width: 100%; max-width: 750px; padding: 30px; border-radius: 16px; position: relative; margin:10px; max-height: 90vh; overflow-y: auto; scrollbar-width: none; }
         .modal-content::-webkit-scrollbar { display: none; }
-        .close-modal { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; color: #888; }
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #f0f2f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            cursor: pointer;
+            color: #666;
+            transition: all 0.25s ease-in-out;
+            border: none;
+            outline: none;
+        }
+        .close-modal:hover {
+            background: #ff4d4f;
+            color: #fff;
+            transform: rotate(90deg);
+            box-shadow: 0 4px 10px rgba(255, 77, 79, 0.3);
+        }
         .add-btn { background: #1890ff; color: white; padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; font-size: 1rem; font-weight: 600; margin-bottom: 20px; display: inline-flex; align-items: center; gap: 8px; }
 
         .action-wrapper { position: relative; display: inline-block; }
@@ -291,12 +317,18 @@ $categories = [
                                      
                                     </a>
                                     <br>
-                                    <a href="<?= htmlspecialchars($b['qr_image']) ?>" download="QRCode_<?= htmlspecialchars($b['name']) ?>.png" style="font-size: 0.85rem; color:red; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-download"></i> Download</a>
+                                    <?php 
+                                        // Dynamic fix for existing records that have the old absolute path
+                                        $display_qr_path = str_replace('/AI-review/review/', '../review/', $b['qr_image']);
+                                    ?>
+                                    <a href="<?= htmlspecialchars($display_qr_path) ?>" download="QRCode_<?= htmlspecialchars($b['name']) ?>.png" style="font-size: 0.85rem; color:red; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-download"></i> Download</a>
                                     <br>
                                     <?php 
                                         $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
                                         $domain = $_SERVER['HTTP_HOST'];
-                                        $copy_url = $protocol . "://" . $domain . "/AI-review/review/" . urlencode($b['token'] ?? '');
+                                        $script_path = $_SERVER['REQUEST_URI'];
+                                        $base_dir = substr($script_path, 0, strpos($script_path, '/back-office-login-wipro/'));
+                                        $copy_url = $protocol . "://" . $domain . $base_dir . "/review/" . urlencode($b['token'] ?? '');
                                     ?>
                                     <a href="javascript:void(0)" onclick="navigator.clipboard.writeText('<?= $copy_url ?>'); alert('URL Copied!');" style="font-size: 0.85rem; color: #1890ff; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; margin-top: 5px;"><i class="fas fa-copy"></i> Copy URL</a>
                                 <?php else: ?>
@@ -311,7 +343,7 @@ $categories = [
                                         <form method="POST" onsubmit="return confirm('Are you sure you want to delete this business?');" style="margin:0;">
                                             <input type="hidden" name="action" value="delete">
                                             <input type="hidden" name="business_id" value="<?= $b['id'] ?>">
-                                            <button type="submit" class="delete-action"><i class="fas fa-trash"></i></button>
+                                            <button type="submit" class="delete-action"><i class="fas fa-trash"></i>Delete</button>
                                         </form>
                                     </div>
                                 </div>
@@ -336,7 +368,7 @@ $categories = [
     <!-- Modal -->
     <div class="modal" id="businessModal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <button type="button" class="close-modal" onclick="closeModal()"><i class="fas fa-times"></i></button>
             <h2 id="modalTitle" style="margin-bottom: 20px; color: #111;text-align:center;">Add Business</h2>
             <form method="POST" action="">
                 <input type="hidden" name="action" id="formAction" value="add">
@@ -345,43 +377,27 @@ $categories = [
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                     <div>
                         <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Business Name *</label>
-                        <input type="text" name="name" id="bName" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                        <input type="text" name="name" id="bName" placeholder="Enter Business name" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
                     </div>
-                    <div>
-                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">City</label>
-                        <input type="text" name="city" id="bCity" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                    </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                     <div>
                         <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Business Location</label>
-                        <input type="text" name="location" id="blocation" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                    </div>
-                    <div>
-                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">No of Reviews</label>
-                        <input type="number" name="no_review" id="bno_review" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                        <input type="text" name="location" placeholder="Enter Business location" id="blocation" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
                     </div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                     <div>
                         <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Category *</label>
-                        <select name="category" id="bCategory" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                            <option value="">Select</option>
+                        <input type="text" name="category" id="bCategory" list="category-list" required placeholder="Select or type category" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                        <datalist id="category-list">
                             <?php foreach($categories as $cat): ?>
-                                <option value="<?= htmlspecialchars($cat) ?>"><?= htmlspecialchars($cat) ?></option>
+                                <option value="<?= htmlspecialchars($cat) ?>"></option>
                             <?php endforeach; ?>
-                        </select>
+                        </datalist>
                     </div>
                     <div>
-                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Subcategory</label>
-                        <select name="subcategory" id="bSubcategory" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                            <option value="">Select</option>
-                            <?php foreach($categories as $cat): ?>
-                                <option value="<?= htmlspecialchars($cat) ?>"><?= htmlspecialchars($cat) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Keywords</label>
+                        <input type="text" name="keywords" id="bKeywords" placeholder="e.g. cafe,food,jaipur" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
                     </div>
                 </div>
 
@@ -391,8 +407,8 @@ $categories = [
                         <input type="url" name="google_review_link" id="bGoogle" required placeholder="https://..." style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
                     </div>
                     <div>
-                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">Keywords</label>
-                        <input type="text" name="keywords" id="bKeywords" placeholder="e.g. cafe,food,jaipur" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #333;">No of Reviews</label>
+                        <input type="number" name="no_review" id="bno_review" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
                     </div>
                 </div>
 
@@ -577,11 +593,9 @@ $categories = [
                 document.getElementById('modalTitle').innerText = 'Edit Business';
                 document.getElementById('businessId').value = data.id;
                 document.getElementById('bName').value = data.name;
-                document.getElementById('bCity').value = data.city;
                 document.getElementById('blocation').value = data.location;
                 document.getElementById('bno_review').value = data.no_review;
                 document.getElementById('bCategory').value = data.category;
-                document.getElementById('bSubcategory').value = data.subcategory;
                 document.getElementById('bGoogle').value = data.google_review_link;
                 document.getElementById('bAllowDuplicate').checked = (data.allow_duplicate == 1);
                 document.getElementById('bKeywords').value = data.keywords || '';
@@ -613,11 +627,9 @@ $categories = [
                 document.getElementById('modalTitle').innerText = 'Add Business';
                 document.getElementById('businessId').value = '0';
                 document.getElementById('bName').value = '';
-                document.getElementById('bCity').value = '';
                 document.getElementById('blocation').value = '';
                 document.getElementById('bno_review').value = 3;
                 document.getElementById('bCategory').value = '';
-                document.getElementById('bSubcategory').value = '';
                 document.getElementById('bGoogle').value = '';
                 document.getElementById('bAllowDuplicate').checked = false;
                 document.getElementById('bKeywords').value = '';

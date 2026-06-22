@@ -148,7 +148,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <i class="fas fa-robot"></i> AI Review
     </div>
     <ul class="menu">
-        <li><a href="/AI-review/back-office-login-wipro/dashboard.php" class="<?= $current_page == 'dashboard.php' ? 'active' : '' ?>"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+        <li><a href="../back-office-login-wipro/dashboard.php" class="<?= $current_page == 'dashboard.php' ? 'active' : '' ?>"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
       
         <!-- <li><a href="/AI-review/review/smart-reply.php" class="<?= $current_page == 'smart-reply.php' ? 'active' : '' ?>"><i class="fas fa-message"></i> smart reply</a></li> -->
         <li><a href="../back-office-login-wipro/business.php" class="<?= $current_page == 'business.php' ? 'active' : '' ?>"><i class="fas fa-business-time"></i>Business</a></li>

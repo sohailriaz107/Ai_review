@@ -117,6 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
             margin: 0 0 5px;
             font-size: 1.8rem;
             color: #111;
+            
         }
         .page-title p {
             margin: 0;
@@ -326,6 +327,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
         @media (max-width: 992px) {
             .settings-container { grid-template-columns: 1fr; }
             .profile-sidebar { max-width: 400px; margin: 0 auto; width: 100%; }
+             .page-title h1 {
+            margin: 0 0 5px;
+            font-size: 1.8rem;
+            color: #111;
+            text-align: center;
+            
+        }
+        .page-title p {
+            margin: 0;
+            color: #777;
+            text-align: center;
+        }
         }
         @media (max-width: 576px) {
             .form-row { grid-template-columns: 1fr; gap: 0; }

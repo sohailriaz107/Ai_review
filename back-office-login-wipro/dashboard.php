@@ -91,28 +91,28 @@ $monthly = array_reverse($monthly, true);
             <div class="stat-card bg-primary">
                 <div>
                     <h3><?= $total_businesses ?></h3>
-                    <p>Total Businesses</p>
+                    <p style="color: floralwhite;">Total Businesses</p>
                 </div>
                 <i class="fas fa-store stat-bg-icon"></i>
             </div>
             <div class="stat-card bg-success">
                 <div>
                     <h3><?= $total_tokens ?></h3>
-                    <p>Review Links</p>
+                    <p style="color: floralwhite;">Review Links</p>
                 </div>
                 <i class="fas fa-link stat-bg-icon"></i>
             </div>
             <div class="stat-card bg-warning">
                 <div>
                     <h3><?= $total_tokens ?></h3>
-                    <p>QR Codes Generated</p>
+                    <p style="color: floralwhite;">QR Codes Generated</p>
                 </div>
                 <i class="fas fa-qrcode stat-bg-icon"></i>
             </div>
             <div class="stat-card bg-info">
                 <div>
                     <h3>Active</h3>
-                    <p>AI Status</p>
+                    <p style="color: floralwhite;">AI Status</p>
                 </div>
                 <i class="fas fa-robot stat-bg-icon"></i>
             </div>

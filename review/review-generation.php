@@ -343,7 +343,7 @@ stars.forEach(star => {
             }
             
             navigator.clipboard.writeText(textToCopy).then(() => {
-                alert('Review text copied to clipboard! Redirecting you to Google to paste it...');
+                
                 if (googleLink) {
                     window.location.href = googleLink;
                 }
